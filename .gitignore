@@ -1,7 +1,4 @@
 [Bb]in/
 [Oo]bj/
-*.userprefs
-test-results/
-TestResults/
-*.suo
-*.user
+.vs/
+packages/
