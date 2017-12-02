@@ -138,13 +138,13 @@ namespace Pkcs7SignatureGenerator
                 if (string.IsNullOrEmpty(libraryPath))
                     throw new ArgumentNullException("libraryPath");
 
-                _pkcs11 = new Pkcs11(libraryPath, true);
+                _pkcs11 = new Pkcs11(libraryPath, AppType.MultiThreaded);
 
                 _slot = FindSlot(tokenSerial, tokenLabel);
                 if (_slot == null)
                     throw new TokenNotFoundException(string.Format("Token with serial \"{0}\" and label \"{1}\" was not found", tokenSerial, tokenLabel));
 
-                _session = _slot.OpenSession(true);
+                _session = _slot.OpenSession(SessionType.ReadOnly);
                 _session.Login(CKU.CKU_USER, pin);
 
                 _privateKeyHandle = FindPrivateKey(ckaLabel, ckaId);
@@ -191,7 +191,7 @@ namespace Pkcs7SignatureGenerator
             // Don't read certificate from token if it has already been read
             if (_signingCertificate == null)
             {
-                using (Session session = _slot.OpenSession(true))
+                using (Session session = _slot.OpenSession(SessionType.ReadOnly))
                 {
                     List<ObjectAttribute> searchTemplate = new List<ObjectAttribute>();
                     searchTemplate.Add(new ObjectAttribute(CKA.CKA_CLASS, CKO.CKO_CERTIFICATE));
@@ -232,7 +232,7 @@ namespace Pkcs7SignatureGenerator
             {
                 List<byte[]> certificates = new List<byte[]>();
 
-                using (Session session = _slot.OpenSession(true))
+                using (Session session = _slot.OpenSession(SessionType.ReadOnly))
                 {
                     List<ObjectAttribute> searchTemplate = new List<ObjectAttribute>();
                     searchTemplate.Add(new ObjectAttribute(CKA.CKA_CLASS, CKO.CKO_CERTIFICATE));
@@ -304,7 +304,7 @@ namespace Pkcs7SignatureGenerator
             byte[] pkcs1DigestInfo = CreateDigestInfo(pkcs1Digest, hashOid);
             byte[] pkcs1Signature = null;
 
-            using (Session session = _slot.OpenSession(true))
+            using (Session session = _slot.OpenSession(SessionType.ReadOnly))
             using (Mechanism mechanism = new Mechanism(CKM.CKM_RSA_PKCS))
                 pkcs1Signature = session.Sign(mechanism, _privateKeyHandle, pkcs1DigestInfo);
 
@@ -367,7 +367,7 @@ namespace Pkcs7SignatureGenerator
             if (string.IsNullOrEmpty(tokenSerial) && string.IsNullOrEmpty(tokenLabel))
                 throw new ArgumentException("Token serial and/or label has to be specified");
 
-            List<Slot> slots = _pkcs11.GetSlotList(true);
+            List<Slot> slots = _pkcs11.GetSlotList(SlotsType.WithTokenPresent);
             foreach (Slot slot in slots)
             {
                 TokenInfo tokenInfo = null;
@@ -413,7 +413,7 @@ namespace Pkcs7SignatureGenerator
             if (string.IsNullOrEmpty(ckaLabel) && ckaId == null)
                 throw new ArgumentException("Private key label and/or id has to be specified");
 
-            using (Session session = _slot.OpenSession(true))
+            using (Session session = _slot.OpenSession(SessionType.ReadOnly))
             {
                 List<ObjectAttribute> searchTemplate = new List<ObjectAttribute>();
                 searchTemplate.Add(new ObjectAttribute(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY));

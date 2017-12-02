@@ -48,7 +48,7 @@ namespace Pkcs7SignatureGenerator
             if (string.IsNullOrEmpty(libraryPath))
                 throw new ArgumentNullException("libraryPath");
 
-            _pkcs11 = new Pkcs11(libraryPath, true);
+            _pkcs11 = new Pkcs11(libraryPath, AppType.MultiThreaded);
         }
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace Pkcs7SignatureGenerator
 
             List<Token> tokens = new List<Token>();
 
-            List<Slot> slots = _pkcs11.GetSlotList(true);
+            List<Slot> slots = _pkcs11.GetSlotList(SlotsType.WithTokenPresent);
             foreach (Slot slot in slots)
             {
                 TokenInfo tokenInfo = null;
@@ -105,7 +105,7 @@ namespace Pkcs7SignatureGenerator
             privateKeys = new List<PrivateKey>();
             certificates = new List<Certificate>();
 
-            using (Session session = token.Slot.OpenSession(true))
+            using (Session session = token.Slot.OpenSession(SessionType.ReadOnly))
             {
                 if (login == true)
                     session.Login(CKU.CKU_USER, pin);
