@@ -1,7 +1,7 @@
 Pkcs7SignatureGenerator
 =======================
 
-Example application for PKCS#7 signature creation with [Pkcs11Interop](http://www.pkcs11interop.net) and [BouncyCastle](http://www.bouncycastle.org/csharp/) libraries
+Sample application for PKCS#7/CMS signature creation with [Pkcs11Interop](https://pkcs11interop.net) and [BouncyCastle](https://bouncycastle.org/csharp/) libraries
 
 ## Usage
 
@@ -33,12 +33,13 @@ Example application for PKCS#7 signature creation with [Pkcs11Interop](http://ww
 		--data-file "c:\temp\document.txt"
 		--signature-file "c:\temp\document.p7s"
 		--hash-alg "SHA256"
+		--signature-scheme "RSASSA_PKCS1_v1_5"
 		--certs-dir "c:\temp\additional-certs"
 
 ### Verify signature
 
 	openssl.exe
-		smime
+		cms
 		-verify
 		-binary
 		-inform DER
