@@ -440,27 +440,19 @@ namespace Pkcs7SignatureGenerator
         /// <returns>OID of specified hash algorithm</returns>
         private static string GetHashOid(HashAlgorithm hashAlgorithm)
         {
-            string oid = null;
-
             switch (hashAlgorithm)
             {
                 case HashAlgorithm.SHA1:
-                    oid = OID.SHA1;
-                    break;
+                    return OID.SHA1;
                 case HashAlgorithm.SHA256:
-                    oid = OID.SHA256;
-                    break;
+                    return OID.SHA256;
                 case HashAlgorithm.SHA384:
-                    oid = OID.SHA384;
-                    break;
+                    return OID.SHA384;
                 case HashAlgorithm.SHA512:
-                    oid = OID.SHA512;
-                    break;
+                    return OID.SHA512;
                 default:
                     throw new NotSupportedException("Unsupported hash algorithm");
             }
-
-            return oid;
         }
 
         /// <summary>
@@ -470,27 +462,19 @@ namespace Pkcs7SignatureGenerator
         /// <returns>Implementation of specified hash algorithm</returns>
         private static IDigest GetHashGenerator(HashAlgorithm hashAlgorithm)
         {
-            IDigest digest = null;
-
             switch (hashAlgorithm)
             {
                 case HashAlgorithm.SHA1:
-                    digest = new Sha1Digest();
-                    break;
+                    return new Sha1Digest();
                 case HashAlgorithm.SHA256:
-                    digest = new Sha256Digest();
-                    break;
+                    return new Sha256Digest();
                 case HashAlgorithm.SHA384:
-                    digest = new Sha384Digest();
-                    break;
+                    return new Sha384Digest();
                 case HashAlgorithm.SHA512:
-                    digest = new Sha512Digest();
-                    break;
+                    return new Sha512Digest();
                 default:
                     throw new NotSupportedException("Unsupported hash algorithm");
             }
-
-            return digest;
         }
 
         /// <summary>
