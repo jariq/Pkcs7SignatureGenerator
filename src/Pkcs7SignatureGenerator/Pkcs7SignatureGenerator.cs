@@ -292,51 +292,66 @@ namespace Pkcs7SignatureGenerator
             // Add PKCS#9 contentType signed attribute
             signedAttributesVector.Add(
                 new Org.BouncyCastle.Asn1.Cms.Attribute(
-                    new DerObjectIdentifier(OID.PKCS9AtContentType),
-                    new DerSet(new DerObjectIdentifier(OID.PKCS7IdData))));
+                    attrType: new DerObjectIdentifier(OID.PKCS9AtContentType),
+                    attrValues: new DerSet(new DerObjectIdentifier(OID.PKCS7IdData))));
 
             // Add PKCS#9 messageDigest signed attribute
             signedAttributesVector.Add(
                 new Org.BouncyCastle.Asn1.Cms.Attribute(
-                    new DerObjectIdentifier(OID.PKCS9AtMessageDigest),
-                    new DerSet(new DerOctetString(dataHash))));
+                    attrType: new DerObjectIdentifier(OID.PKCS9AtMessageDigest),
+                    attrValues: new DerSet(new DerOctetString(dataHash))));
 
             // Add PKCS#9 signingTime signed attribute
             signedAttributesVector.Add(
                 new Org.BouncyCastle.Asn1.Cms.Attribute(
-                    new DerObjectIdentifier(OID.PKCS9AtSigningTime),
-                    new DerSet(new Org.BouncyCastle.Asn1.Cms.Time(new DerUtcTime(DateTime.UtcNow)))));
+                    attrType: new DerObjectIdentifier(OID.PKCS9AtSigningTime),
+                    attrValues: new DerSet(new Org.BouncyCastle.Asn1.Cms.Time(new DerUtcTime(DateTime.UtcNow)))));
 
             // Compute digest of SignerInfo.signedAttrs
             DerSet signedAttributes = new DerSet(signedAttributesVector);
             byte[] signedAttributesDigest = ComputeDigest(hashGenerator, signedAttributes.GetDerEncoded());
 
             // Sign digest of SignerInfo.signedAttrs with private key stored on PKCS#11 compatible device
-            Asn1OctetString encryptedDigest = null;
-            AlgorithmIdentifier digestEncryptionAlgorithm = null;
+            Asn1OctetString digestSignature = null;
+            AlgorithmIdentifier digestSignatureAlgorithm = null;
             if (_signatureScheme == SignatureScheme.RSASSA_PKCS1_v1_5)
             {
+                // Construct DigestInfo
                 byte[] digestInfo = CreateDigestInfo(signedAttributesDigest, hashOid);
+
+                // Sign DigestInfo with CKM_RSA_PKCS mechanism
                 byte[] signature = null;
 
                 using (Session session = _slot.OpenSession(SessionType.ReadOnly))
                 using (Mechanism mechanism = new Mechanism(CKM.CKM_RSA_PKCS))
                     signature = session.Sign(mechanism, _privateKeyHandle, digestInfo);
 
-                encryptedDigest = new DerOctetString(signature);
-                digestEncryptionAlgorithm = new AlgorithmIdentifier(new DerObjectIdentifier(OID.PKCS1RsaEncryption), DerNull.Instance);
+                // Construct SignerInfo.signature
+                digestSignature = new DerOctetString(signature);
+
+                // Construct SignerInfo.signatureAlgorithm
+                digestSignatureAlgorithm = new AlgorithmIdentifier(
+                    algorithm: new DerObjectIdentifier(OID.PKCS1RsaEncryption),
+                    parameters: DerNull.Instance
+                );
             }
             else if(_signatureScheme == SignatureScheme.RSASSA_PSS)
             {
+                // Construct parameters for CKM_RSA_PKCS_PSS mechanism
                 CkRsaPkcsPssParams pssMechanismParams = CreateCkRsaPkcsPssParams(_hashAlgorihtm);
+
+                // Sign digest with CKM_RSA_PKCS_PSS mechanism
                 byte[] signature = null;
 
                 using (Session session = _slot.OpenSession(SessionType.ReadOnly))
                 using (Mechanism mechanism = new Mechanism(CKM.CKM_RSA_PKCS_PSS, pssMechanismParams))
                     signature = session.Sign(mechanism, _privateKeyHandle, signedAttributesDigest);
 
-                encryptedDigest = new DerOctetString(signature);
-                digestEncryptionAlgorithm = new AlgorithmIdentifier(
+                // Construct SignerInfo.signature
+                digestSignature = new DerOctetString(signature);
+
+                // Construct SignerInfo.signatureAlgorithm
+                digestSignatureAlgorithm = new AlgorithmIdentifier(
                     algorithm: new DerObjectIdentifier(OID.PKCS1RsassaPss),
                     parameters: new Org.BouncyCastle.Asn1.Pkcs.RsassaPssParameters(
                         hashAlgorithm: new AlgorithmIdentifier(
@@ -362,22 +377,28 @@ namespace Pkcs7SignatureGenerator
 
             // Construct SignerInfo
             SignerInfo signerInfo = new SignerInfo(
-                new SignerIdentifier(new IssuerAndSerialNumber(signingCertificate.IssuerDN, signingCertificate.SerialNumber)),
-                new AlgorithmIdentifier(new DerObjectIdentifier(hashOid), null),
-                signedAttributes,
-                digestEncryptionAlgorithm,
-                encryptedDigest,
-                null
+                sid: new SignerIdentifier(new IssuerAndSerialNumber(signingCertificate.IssuerDN, signingCertificate.SerialNumber)),
+                digAlgorithm: new AlgorithmIdentifier(
+                    algorithm: new DerObjectIdentifier(hashOid),
+                    parameters: DerNull.Instance
+                ),
+                authenticatedAttributes: signedAttributes,
+                digEncryptionAlgorithm: digestSignatureAlgorithm,
+                encryptedDigest: digestSignature,
+                unauthenticatedAttributes: null
             );
 
             // Construct SignedData.digestAlgorithms
             Asn1EncodableVector digestAlgorithmsVector = new Asn1EncodableVector();
-            digestAlgorithmsVector.Add(new AlgorithmIdentifier(new DerObjectIdentifier(hashOid), null));
+            digestAlgorithmsVector.Add(
+                new AlgorithmIdentifier(
+                    algorithm: new DerObjectIdentifier(hashOid),
+                    parameters: DerNull.Instance));
 
             // Construct SignedData.encapContentInfo
             ContentInfo encapContentInfo = new ContentInfo(
-                new DerObjectIdentifier(OID.PKCS7IdData),
-                (detached) ? null : new DerOctetString(data));
+                contentType: new DerObjectIdentifier(OID.PKCS7IdData),
+                content: (detached) ? null : new DerOctetString(data));
 
             // Construct SignedData.certificates
             Asn1EncodableVector certificatesVector = new Asn1EncodableVector();
@@ -390,16 +411,16 @@ namespace Pkcs7SignatureGenerator
 
             // Construct SignedData
             SignedData signedData = new SignedData(
-                new DerSet(digestAlgorithmsVector),
-                encapContentInfo,
-                new BerSet(certificatesVector),
-                null,
-                new DerSet(signerInfosVector));
+                digestAlgorithms: new DerSet(digestAlgorithmsVector),
+                contentInfo: encapContentInfo,
+                certificates: new BerSet(certificatesVector),
+                crls: null,
+                signerInfos: new DerSet(signerInfosVector));
 
             // Construct top level ContentInfo
             ContentInfo contentInfo = new ContentInfo(
-                new DerObjectIdentifier(OID.PKCS7IdSignedData),
-                signedData);
+                contentType: new DerObjectIdentifier(OID.PKCS7IdSignedData),
+                content: signedData);
 
             return contentInfo.GetDerEncoded();
         }
@@ -576,9 +597,14 @@ namespace Pkcs7SignatureGenerator
         /// <returns>DER encoded PKCS#1 DigestInfo</returns>
         private static byte[] CreateDigestInfo(byte[] hash, string hashOid)
         {
-            DerObjectIdentifier derObjectIdentifier = new DerObjectIdentifier(hashOid);
-            AlgorithmIdentifier algorithmIdentifier = new AlgorithmIdentifier(derObjectIdentifier, DerNull.Instance);
-            DigestInfo digestInfo = new DigestInfo(algorithmIdentifier, hash);
+            DigestInfo digestInfo = new DigestInfo(
+                algID: new AlgorithmIdentifier(
+                    algorithm: new DerObjectIdentifier(hashOid),
+                    parameters: DerNull.Instance
+                ),
+                digest: hash
+            );
+
             return digestInfo.GetDerEncoded();
         }
 
