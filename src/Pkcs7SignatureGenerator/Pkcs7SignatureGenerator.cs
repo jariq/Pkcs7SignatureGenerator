@@ -201,7 +201,7 @@ namespace Pkcs7SignatureGenerator
                     if (_ckaId != null)
                         searchTemplate.Add(new ObjectAttribute(CKA.CKA_ID, _ckaId));
 
-                    List<ObjectHandle> foundObjects = _session.FindAllObjects(searchTemplate);
+                    List<ObjectHandle> foundObjects = session.FindAllObjects(searchTemplate);
                     if (foundObjects.Count < 1)
                         throw new ObjectNotFoundException(string.Format("Certificate with label \"{0}\" and id \"{1}\" was not found", _ckaLabel, ConvertUtils.BytesToHexString(_ckaId)));
                     else if (foundObjects.Count > 1)
@@ -210,7 +210,7 @@ namespace Pkcs7SignatureGenerator
                     List<CKA> attributes = new List<CKA>();
                     attributes.Add(CKA.CKA_VALUE);
 
-                    List<ObjectAttribute> certificateAttributes = _session.GetAttributeValue(foundObjects[0], attributes);
+                    List<ObjectAttribute> certificateAttributes = session.GetAttributeValue(foundObjects[0], attributes);
                     _signingCertificate = certificateAttributes[0].GetValueAsByteArray();
                 }
             }
@@ -241,10 +241,10 @@ namespace Pkcs7SignatureGenerator
                     List<CKA> attributes = new List<CKA>();
                     attributes.Add(CKA.CKA_VALUE);
 
-                    List<ObjectHandle> foundObjects = _session.FindAllObjects(searchTemplate);
+                    List<ObjectHandle> foundObjects = session.FindAllObjects(searchTemplate);
                     foreach (ObjectHandle foundObject in foundObjects)
                     {
-                        List<ObjectAttribute> objectAttributes = _session.GetAttributeValue(foundObject, attributes);
+                        List<ObjectAttribute> objectAttributes = session.GetAttributeValue(foundObject, attributes);
                         certificates.Add(objectAttributes[0].GetValueAsByteArray());
                     }
                 }
@@ -423,7 +423,7 @@ namespace Pkcs7SignatureGenerator
                 if (ckaId != null)
                     searchTemplate.Add(new ObjectAttribute(CKA.CKA_ID, ckaId));
 
-                List<ObjectHandle> foundObjects = _session.FindAllObjects(searchTemplate);
+                List<ObjectHandle> foundObjects = session.FindAllObjects(searchTemplate);
                 if (foundObjects.Count < 1)
                     throw new ObjectNotFoundException(string.Format("Private key with label \"{0}\" and id \"{1}\" was not found", ckaLabel, ConvertUtils.BytesToHexString(ckaId)));
                 else if (foundObjects.Count > 1)
