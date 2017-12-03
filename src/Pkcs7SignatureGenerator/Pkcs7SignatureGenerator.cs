@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using Net.Pkcs11Interop.Common;
 using Net.Pkcs11Interop.HighLevelAPI;
+using Net.Pkcs11Interop.HighLevelAPI.MechanismParams;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Asn1.X509;
@@ -327,7 +328,32 @@ namespace Pkcs7SignatureGenerator
             }
             else if(_signatureScheme == SignatureScheme.RSASSA_PSS)
             {
-                throw new NotImplementedException();
+                CkRsaPkcsPssParams pssMechanismParams = CreateCkRsaPkcsPssParams(_hashAlgorihtm);
+                byte[] signature = null;
+
+                using (Session session = _slot.OpenSession(SessionType.ReadOnly))
+                using (Mechanism mechanism = new Mechanism(CKM.CKM_RSA_PKCS_PSS, pssMechanismParams))
+                    signature = session.Sign(mechanism, _privateKeyHandle, signedAttributesDigest);
+
+                encryptedDigest = new DerOctetString(signature);
+                digestEncryptionAlgorithm = new AlgorithmIdentifier(
+                    algorithm: new DerObjectIdentifier(OID.PKCS1RsassaPss),
+                    parameters: new Org.BouncyCastle.Asn1.Pkcs.RsassaPssParameters(
+                        hashAlgorithm: new AlgorithmIdentifier(
+                            algorithm: new DerObjectIdentifier(hashOid),
+                            parameters: DerNull.Instance
+                        ),
+                        maskGenAlgorithm: new AlgorithmIdentifier(
+                            algorithm: new DerObjectIdentifier(OID.PKCS1Mgf1),
+                            parameters: new AlgorithmIdentifier(
+                                algorithm: new DerObjectIdentifier(hashOid),
+                                parameters: DerNull.Instance
+                            )
+                        ),
+                        saltLength: new DerInteger(hashGenerator.GetDigestSize()),
+                        trailerField: new DerInteger(1)
+                    )
+                );
             }
             else
             {
@@ -499,6 +525,44 @@ namespace Pkcs7SignatureGenerator
                     return new Sha384Digest();
                 case HashAlgorithm.SHA512:
                     return new Sha512Digest();
+                default:
+                    throw new NotSupportedException("Unsupported hash algorithm");
+            }
+        }
+
+        /// <summary>
+        /// Creates parameters for CKM_RSA_PKCS_PSS mechanism
+        /// </summary>
+        /// <param name="hashAlgorithm">Hash algorithm</param>
+        /// <returns>Parameters for CKM_RSA_PKCS_PSS mechanism</returns>
+        private CkRsaPkcsPssParams CreateCkRsaPkcsPssParams(HashAlgorithm hashAlgorithm)
+        {
+            switch (hashAlgorithm)
+            {
+                case HashAlgorithm.SHA1:
+                    return new CkRsaPkcsPssParams(
+                        hashAlg: (ulong)CKM.CKM_SHA_1,
+                        mgf: (ulong)CKG.CKG_MGF1_SHA1,
+                        len: (ulong)GetHashGenerator(hashAlgorithm).GetDigestSize()
+                    );
+                case HashAlgorithm.SHA256:
+                    return new CkRsaPkcsPssParams(
+                        hashAlg: (ulong)CKM.CKM_SHA256,
+                        mgf: (ulong)CKG.CKG_MGF1_SHA256,
+                        len: (ulong)GetHashGenerator(hashAlgorithm).GetDigestSize()
+                    );
+                case HashAlgorithm.SHA384:
+                    return new CkRsaPkcsPssParams(
+                        hashAlg: (ulong)CKM.CKM_SHA384,
+                        mgf: (ulong)CKG.CKG_MGF1_SHA384,
+                        len: (ulong)GetHashGenerator(hashAlgorithm).GetDigestSize()
+                    );
+                case HashAlgorithm.SHA512:
+                    return new CkRsaPkcsPssParams(
+                        hashAlg: (ulong)CKM.CKM_SHA512,
+                        mgf: (ulong)CKG.CKG_MGF1_SHA512,
+                        len: (ulong)GetHashGenerator(hashAlgorithm).GetDigestSize()
+                    );
                 default:
                     throw new NotSupportedException("Unsupported hash algorithm");
             }

@@ -39,9 +39,19 @@ namespace Pkcs7SignatureGenerator
         public static string PKCS9AtSigningTime = "1.2.840.113549.1.9.5";
 
         /// <summary>
-        /// PKCS#1 RSA encryption
+        /// PKCS#1 RSAES-PKCS-v1_5 signature scheme
         /// </summary>
         public static string PKCS1RsaEncryption = "1.2.840.113549.1.1.1";
+
+        /// <summary>
+        /// PKCS#1 RSASSA-PSS signature scheme
+        /// </summary>
+        public static string PKCS1RsassaPss = "1.2.840.113549.1.1.10";
+
+        /// <summary>
+        /// PKCS#1 MGF1 mask generation function
+        /// </summary>
+        public static string PKCS1Mgf1 = "1.2.840.113549.1.1.8";
 
         /// <summary>
         /// PKCS#7 data content type
