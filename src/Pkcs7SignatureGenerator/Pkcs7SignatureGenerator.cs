@@ -535,7 +535,7 @@ namespace Pkcs7SignatureGenerator
         /// </summary>
         /// <param name="hashAlgorithm">Hash algorithm</param>
         /// <returns>Parameters for CKM_RSA_PKCS_PSS mechanism</returns>
-        private CkRsaPkcsPssParams CreateCkRsaPkcsPssParams(HashAlgorithm hashAlgorithm)
+        private static CkRsaPkcsPssParams CreateCkRsaPkcsPssParams(HashAlgorithm hashAlgorithm)
         {
             switch (hashAlgorithm)
             {
