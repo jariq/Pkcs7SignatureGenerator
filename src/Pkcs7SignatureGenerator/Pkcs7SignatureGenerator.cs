@@ -76,6 +76,11 @@ namespace Pkcs7SignatureGenerator
         private HashAlgorithm _hashAlgorihtm = HashAlgorithm.SHA512;
 
         /// <summary>
+        /// Signature scheme used for the signature creation
+        /// </summary>
+        private SignatureScheme _signatureScheme = SignatureScheme.RSASSA_PKCS1_v1_5;
+
+        /// <summary>
         /// Raw data of certificate related to private key used for signing
         /// </summary>
         private byte[] _signingCertificate = null;
@@ -99,11 +104,12 @@ namespace Pkcs7SignatureGenerator
         /// <param name="ckaLabel">Label (value of CKA_LABEL attribute) of the private key used for signing. May be null if ckaId is specified.</param>
         /// <param name="ckaId">Hex encoded string with identifier (value of CKA_ID attribute) of the private key used for signing. May be null if ckaLabel is specified.</param>
         /// <param name="hashAlgorihtm">Hash algorihtm used for the signature creation</param>
-        public Pkcs7SignatureGenerator(string libraryPath, string tokenSerial, string tokenLabel, string pin, string ckaLabel, string ckaId, HashAlgorithm hashAlgorihtm)
+        /// <param name="signatureScheme">Signature scheme used for the signature creation</param>
+        public Pkcs7SignatureGenerator(string libraryPath, string tokenSerial, string tokenLabel, string pin, string ckaLabel, string ckaId, HashAlgorithm hashAlgorihtm, SignatureScheme signatureScheme)
         {
             byte[] pinValue = (pin == null) ? null : ConvertUtils.Utf8StringToBytes(pin);
             byte[] ckaIdValue = (ckaId == null) ? null : ConvertUtils.HexStringToBytes(ckaId);
-            InitializePkcs7RsaSignature(libraryPath, tokenSerial, tokenLabel, pinValue, ckaLabel, ckaIdValue, hashAlgorihtm);
+            InitializePkcs7RsaSignature(libraryPath, tokenSerial, tokenLabel, pinValue, ckaLabel, ckaIdValue, hashAlgorihtm, signatureScheme);
         }
 
         /// <summary>
@@ -116,9 +122,10 @@ namespace Pkcs7SignatureGenerator
         /// <param name="ckaLabel">Label (value of CKA_LABEL attribute) of the private key used for signing. May be null if ckaId is specified.</param>
         /// <param name="ckaId">Identifier (value of CKA_ID attribute) of the private key used for signing. May be null if ckaLabel is specified.</param>
         /// <param name="hashAlgorihtm">Hash algorihtm used for the signature creation</param>
-        public Pkcs7SignatureGenerator(string libraryPath, string tokenSerial, string tokenLabel, byte[] pin, string ckaLabel, byte[] ckaId, HashAlgorithm hashAlgorihtm)
+        /// <param name="signatureScheme">Signature scheme used for the signature creation</param>
+        public Pkcs7SignatureGenerator(string libraryPath, string tokenSerial, string tokenLabel, byte[] pin, string ckaLabel, byte[] ckaId, HashAlgorithm hashAlgorihtm, SignatureScheme signatureScheme)
         {
-            InitializePkcs7RsaSignature(libraryPath, tokenSerial, tokenLabel, pin, ckaLabel, ckaId, hashAlgorihtm);
+            InitializePkcs7RsaSignature(libraryPath, tokenSerial, tokenLabel, pin, ckaLabel, ckaId, hashAlgorihtm, signatureScheme);
         }
 
         /// <summary>
@@ -131,7 +138,8 @@ namespace Pkcs7SignatureGenerator
         /// <param name="ckaLabel">Label (value of CKA_LABEL attribute) of the private key used for signing. May be null if ckaId is specified.</param>
         /// <param name="ckaId">Identifier (value of CKA_ID attribute) of the private key used for signing. May be null if ckaLabel is specified.</param>
         /// <param name="hashAlgorihtm">Hash algorihtm used for the signature creation</param>
-        private void InitializePkcs7RsaSignature(string libraryPath, string tokenSerial, string tokenLabel, byte[] pin, string ckaLabel, byte[] ckaId, HashAlgorithm hashAlgorihtm)
+        /// <param name="signatureScheme">Signature scheme used for the signature creation</param>
+        private void InitializePkcs7RsaSignature(string libraryPath, string tokenSerial, string tokenLabel, byte[] pin, string ckaLabel, byte[] ckaId, HashAlgorithm hashAlgorihtm, SignatureScheme signatureScheme)
         {
             try
             {
@@ -156,6 +164,7 @@ namespace Pkcs7SignatureGenerator
                     throw new ArgumentException("Invalid hash algorithm specified");
 
                 _hashAlgorihtm = hashAlgorihtm;
+                _signatureScheme = signatureScheme;
             }
             catch
             {
@@ -297,25 +306,43 @@ namespace Pkcs7SignatureGenerator
                     new DerObjectIdentifier(OID.PKCS9AtSigningTime),
                     new DerSet(new Org.BouncyCastle.Asn1.Cms.Time(new DerUtcTime(DateTime.UtcNow)))));
 
+            // Compute digest of SignerInfo.signedAttrs
             DerSet signedAttributes = new DerSet(signedAttributesVector);
+            byte[] signedAttributesDigest = ComputeDigest(hashGenerator, signedAttributes.GetDerEncoded());
 
-            // Sign SignerInfo.signedAttrs with PKCS#1 v1.5 RSA signature using private key stored on PKCS#11 compatible device
-            byte[] pkcs1Digest = ComputeDigest(hashGenerator, signedAttributes.GetDerEncoded());
-            byte[] pkcs1DigestInfo = CreateDigestInfo(pkcs1Digest, hashOid);
-            byte[] pkcs1Signature = null;
+            // Sign digest of SignerInfo.signedAttrs with private key stored on PKCS#11 compatible device
+            Asn1OctetString encryptedDigest = null;
+            AlgorithmIdentifier digestEncryptionAlgorithm = null;
+            if (_signatureScheme == SignatureScheme.RSASSA_PKCS1_v1_5)
+            {
+                byte[] digestInfo = CreateDigestInfo(signedAttributesDigest, hashOid);
+                byte[] signature = null;
 
-            using (Session session = _slot.OpenSession(SessionType.ReadOnly))
-            using (Mechanism mechanism = new Mechanism(CKM.CKM_RSA_PKCS))
-                pkcs1Signature = session.Sign(mechanism, _privateKeyHandle, pkcs1DigestInfo);
+                using (Session session = _slot.OpenSession(SessionType.ReadOnly))
+                using (Mechanism mechanism = new Mechanism(CKM.CKM_RSA_PKCS))
+                    signature = session.Sign(mechanism, _privateKeyHandle, digestInfo);
+
+                encryptedDigest = new DerOctetString(signature);
+                digestEncryptionAlgorithm = new AlgorithmIdentifier(new DerObjectIdentifier(OID.PKCS1RsaEncryption), DerNull.Instance);
+            }
+            else if(_signatureScheme == SignatureScheme.RSASSA_PSS)
+            {
+                throw new NotImplementedException();
+            }
+            else
+            {
+                throw new NotSupportedException("Unsupported signature scheme");
+            }
 
             // Construct SignerInfo
             SignerInfo signerInfo = new SignerInfo(
                 new SignerIdentifier(new IssuerAndSerialNumber(signingCertificate.IssuerDN, signingCertificate.SerialNumber)),
                 new AlgorithmIdentifier(new DerObjectIdentifier(hashOid), null),
                 signedAttributes,
-                new AlgorithmIdentifier(new DerObjectIdentifier(OID.PKCS1RsaEncryption), null),
-                new DerOctetString(pkcs1Signature),
-                null);
+                digestEncryptionAlgorithm,
+                encryptedDigest,
+                null
+            );
 
             // Construct SignedData.digestAlgorithms
             Asn1EncodableVector digestAlgorithmsVector = new Asn1EncodableVector();

@@ -99,6 +99,11 @@ namespace Pkcs7SignatureGenerator
         const string _argHashAlg = "--hash-alg";
 
         /// <summary>
+        /// Command line argument that specifies signature scheme
+        /// </summary>
+        const string _argSignatureScheme = "--signature-scheme";
+
+        /// <summary>
         /// Command line argument that specifies path to the directory with additional certificates for certification path building
         /// </summary>
         const string _argCertsDir = "--certs-dir";
@@ -124,6 +129,7 @@ namespace Pkcs7SignatureGenerator
                 string dataFile = null;
                 string signatureFile = null;
                 string hashAlg = null;
+                string signatureScheme = null;
                 string certsDir = null;
 
                 if (args.Length == 0)
@@ -170,6 +176,9 @@ namespace Pkcs7SignatureGenerator
                         case _argHashAlg:
                             hashAlg = args[++i];
                             break;
+                        case _argSignatureScheme:
+                            signatureScheme = args[++i];
+                            break;
                         case _argCertsDir:
                             certsDir = args[++i];
                             break;
@@ -207,6 +216,8 @@ namespace Pkcs7SignatureGenerator
                         ExitWithHelp("Unexpected argument: " + _argSignatureFile);
                     if (!string.IsNullOrEmpty(hashAlg))
                         ExitWithHelp("Unexpected argument: " + _argHashAlg);
+                    if (!string.IsNullOrEmpty(signatureScheme))
+                        ExitWithHelp("Unexpected argument: " + _argSignatureScheme);
                     if (!string.IsNullOrEmpty(certsDir))
                         ExitWithHelp("Unexpected argument: " + _argCertsDir);
 
@@ -250,6 +261,8 @@ namespace Pkcs7SignatureGenerator
                         ExitWithHelp("Unexpected argument: " + _argSignatureFile);
                     if (!string.IsNullOrEmpty(hashAlg))
                         ExitWithHelp("Unexpected argument: " + _argHashAlg);
+                    if (!string.IsNullOrEmpty(signatureScheme))
+                        ExitWithHelp("Unexpected argument: " + _argSignatureScheme);
                     if (!string.IsNullOrEmpty(certsDir))
                         ExitWithHelp("Unexpected argument: " + _argCertsDir);
 
@@ -338,6 +351,7 @@ namespace Pkcs7SignatureGenerator
                 {
                     // Use SHA256 as default hashing algorithm
                     HashAlgorithm hashAlgorithm = HashAlgorithm.SHA256;
+                    SignatureScheme sigScheme = SignatureScheme.RSASSA_PKCS1_v1_5;
 
                     // Validate command line arguments (_argHashAlg and _argCertsDir are optional)
                     if (string.IsNullOrEmpty(pkcs11Library))
@@ -354,9 +368,11 @@ namespace Pkcs7SignatureGenerator
                         ExitWithHelp("Required argument: " + _argSignatureFile);
                     if (!string.IsNullOrEmpty(hashAlg))
                         hashAlgorithm = (HashAlgorithm)Enum.Parse(typeof(HashAlgorithm), hashAlg);
+                    if (!string.IsNullOrEmpty(signatureScheme))
+                        sigScheme = (SignatureScheme)Enum.Parse(typeof(SignatureScheme), signatureScheme);
 
                     // Perform requested operation
-                    using (Pkcs7SignatureGenerator pkcs7SignatureGenerator = new Pkcs7SignatureGenerator(pkcs11Library, tokenSerial, tokenLabel, pin, keyLabel, keyId, hashAlgorithm))
+                    using (Pkcs7SignatureGenerator pkcs7SignatureGenerator = new Pkcs7SignatureGenerator(pkcs11Library, tokenSerial, tokenLabel, pin, keyLabel, keyId, hashAlgorithm, sigScheme))
                     {
                         Console.WriteLine(string.Format("Signing file \"{0}\" using private key with ID \"{1}\" and label \"{2}\" stored on token with serial \"{3}\" and label \"{4}\"", dataFile, keyId, keyLabel, tokenSerial, tokenLabel));
 
@@ -442,6 +458,7 @@ namespace Pkcs7SignatureGenerator
             Console.WriteLine(@"      --data-file ""c:\temp\document.txt""");
             Console.WriteLine(@"      --signature-file ""c:\temp\document.p7s""");
             Console.WriteLine(@"      --hash-alg ""SHA256""");
+            Console.WriteLine(@"      --signature-scheme ""RSASSA_PKCS1_v1_5""");
             Console.WriteLine(@"      --certs-dir ""c:\temp\additional-certs""");
             Console.WriteLine();
             Console.WriteLine(@"  Verify signature:");
