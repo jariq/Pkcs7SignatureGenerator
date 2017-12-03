@@ -73,7 +73,7 @@ namespace Pkcs7SignatureGenerator
 
             BCX509.X509Certificate bcCert = _x509CertificateParser.ReadCertificate(data);
             if (bcCert == null)
-                throw new CryptographicException("Cannot find the requested object.");
+                throw new Exception("Provided data do not represent X.509 certificate");
 
             return bcCert;
         }
@@ -90,7 +90,7 @@ namespace Pkcs7SignatureGenerator
 
             BCX509.X509Certificate bcCert = _x509CertificateParser.ReadCertificate(cert.RawData);
             if (bcCert == null)
-                throw new CryptographicException("Cannot find the requested object.");
+                throw new Exception("Provided data do not represent X.509 certificate");
 
             return bcCert;
         }
