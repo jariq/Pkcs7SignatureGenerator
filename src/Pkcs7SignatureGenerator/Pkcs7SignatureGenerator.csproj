@@ -40,10 +40,14 @@
     <Reference Include="BouncyCastle.Crypto, Version=1.8.1.0, Culture=neutral, PublicKeyToken=0e99375e54769942, processorArchitecture=MSIL">
       <HintPath>..\packages\Portable.BouncyCastle.1.8.1.3\lib\net40\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
+    <Reference Include="MimeKitLite, Version=2.0.0.0, Culture=neutral, PublicKeyToken=bede1c8a46c66814, processorArchitecture=MSIL">
+      <HintPath>..\packages\MimeKitLite.2.0.1\lib\net45\MimeKitLite.dll</HintPath>
+    </Reference>
     <Reference Include="Pkcs11Interop, Version=4.0.0.0, Culture=neutral, PublicKeyToken=c10e9c2d8c006d2a, processorArchitecture=MSIL">
       <HintPath>..\packages\Pkcs11Interop.4.0.0\lib\net45\Pkcs11Interop.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Security" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Certificate.cs" />
@@ -51,6 +55,7 @@
     <Compile Include="HashAlgorithm.cs" />
     <Compile Include="ObjectNotFoundException.cs" />
     <Compile Include="OID.cs" />
+    <Compile Include="OutputFormat.cs" />
     <Compile Include="Pkcs11Explorer.cs" />
     <Compile Include="Pkcs7SignatureGenerator.cs" />
     <Compile Include="PrivateKey.cs" />

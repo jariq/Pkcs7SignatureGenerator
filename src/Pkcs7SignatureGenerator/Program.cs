@@ -18,6 +18,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using MimeKit;
 using Net.Pkcs11Interop.Common;
 using Org.BouncyCastle.Crypto.Parameters;
 
@@ -104,6 +106,11 @@ namespace Pkcs7SignatureGenerator
         const string _argSignatureScheme = "--signature-scheme";
 
         /// <summary>
+        /// Command line argument that specifies output format
+        /// </summary>
+        const string _argOutputFormat = "--output-format";
+
+        /// <summary>
         /// Command line argument that specifies path to the directory with additional certificates for certification path building
         /// </summary>
         const string _argCertsDir = "--certs-dir";
@@ -130,6 +137,7 @@ namespace Pkcs7SignatureGenerator
                 string signatureFile = null;
                 string hashAlg = null;
                 string signatureScheme = null;
+                string outputFormat = null;
                 string certsDir = null;
 
                 if (args.Length == 0)
@@ -179,6 +187,9 @@ namespace Pkcs7SignatureGenerator
                         case _argSignatureScheme:
                             signatureScheme = args[++i];
                             break;
+                        case _argOutputFormat:
+                            outputFormat = args[++i];
+                            break;
                         case _argCertsDir:
                             certsDir = args[++i];
                             break;
@@ -218,6 +229,8 @@ namespace Pkcs7SignatureGenerator
                         ExitWithHelp("Unexpected argument: " + _argHashAlg);
                     if (!string.IsNullOrEmpty(signatureScheme))
                         ExitWithHelp("Unexpected argument: " + _argSignatureScheme);
+                    if (!string.IsNullOrEmpty(outputFormat))
+                        ExitWithHelp("Unexpected argument: " + _argOutputFormat);
                     if (!string.IsNullOrEmpty(certsDir))
                         ExitWithHelp("Unexpected argument: " + _argCertsDir);
 
@@ -263,6 +276,8 @@ namespace Pkcs7SignatureGenerator
                         ExitWithHelp("Unexpected argument: " + _argHashAlg);
                     if (!string.IsNullOrEmpty(signatureScheme))
                         ExitWithHelp("Unexpected argument: " + _argSignatureScheme);
+                    if (!string.IsNullOrEmpty(outputFormat))
+                        ExitWithHelp("Unexpected argument: " + _argOutputFormat);
                     if (!string.IsNullOrEmpty(certsDir))
                         ExitWithHelp("Unexpected argument: " + _argCertsDir);
 
@@ -352,6 +367,7 @@ namespace Pkcs7SignatureGenerator
                     // Use SHA256 as default hashing algorithm
                     HashAlgorithm hashAlgorithm = HashAlgorithm.SHA256;
                     SignatureScheme sigScheme = SignatureScheme.RSASSA_PKCS1_v1_5;
+                    OutputFormat outFormat = OutputFormat.CMS;
 
                     // Validate command line arguments (_argHashAlg and _argCertsDir are optional)
                     if (string.IsNullOrEmpty(pkcs11Library))
@@ -370,6 +386,8 @@ namespace Pkcs7SignatureGenerator
                         hashAlgorithm = (HashAlgorithm)Enum.Parse(typeof(HashAlgorithm), hashAlg);
                     if (!string.IsNullOrEmpty(signatureScheme))
                         sigScheme = (SignatureScheme)Enum.Parse(typeof(SignatureScheme), signatureScheme);
+                    if (!string.IsNullOrEmpty(outputFormat))
+                        outFormat = (OutputFormat)Enum.Parse(typeof(OutputFormat), outputFormat);
 
                     // Perform requested operation
                     using (Pkcs7SignatureGenerator pkcs7SignatureGenerator = new Pkcs7SignatureGenerator(pkcs11Library, tokenSerial, tokenLabel, pin, keyLabel, keyId, hashAlgorithm, sigScheme))
@@ -390,14 +408,73 @@ namespace Pkcs7SignatureGenerator
                         // Build certification path for the signing certificate
                         ICollection<Org.BouncyCastle.X509.X509Certificate> certPath = CertUtils.BuildCertPath(signingCertificate, otherCertificates, true);
 
-                        // Read data that should be signed
-                        byte[] dataFileContent = File.ReadAllBytes(dataFile);
+                        // Perform signing and signature encoding
+                        if (outFormat == OutputFormat.CMS)
+                        {
+                            // Read data that should be signed
+                            byte[] dataFileContent = File.ReadAllBytes(dataFile);
 
-                        // Generate detached PKCS#7 signature
-                        byte[] signature = pkcs7SignatureGenerator.GenerateSignature(dataFileContent, true, CertUtils.ToBouncyCastleObject(signingCertificate), certPath);
+                            // Generate detached PKCS#7 signature
+                            byte[] signature = pkcs7SignatureGenerator.GenerateSignature(dataFileContent, true, CertUtils.ToBouncyCastleObject(signingCertificate), certPath);
 
-                        // Save signature to the file
-                        File.WriteAllBytes(signatureFile, signature);
+                            // Save signature to the file
+                            File.WriteAllBytes(signatureFile, signature);
+                        }
+                        else if (outFormat == OutputFormat.SMIME)
+                        {
+                            MemoryStream dataStream = null;
+                            MemoryStream signatureStream = null;
+
+                            try
+                            {
+                                // Construct MIME part for data
+                                TextPart dataPart = new TextPart("plain");
+                                dataPart.Text = File.ReadAllText(dataFile, Encoding.UTF8);
+
+                                // Read data that should be signed
+                                dataStream = new MemoryStream();
+                                dataPart.WriteTo(dataStream);
+
+                                // Generate detached PKCS#7 signature
+                                byte[] signature = pkcs7SignatureGenerator.GenerateSignature(dataStream.ToArray(), true, CertUtils.ToBouncyCastleObject(signingCertificate), certPath);
+                                signatureStream = new MemoryStream(signature);
+
+                                // Construct MIME part for signature
+                                MimePart signaturePart = new MimePart("application", "x-pkcs7-signature");
+                                signaturePart.Content = new MimeContent(signatureStream, ContentEncoding.Binary);
+                                signaturePart.ContentDisposition = new ContentDisposition(ContentDisposition.Attachment);
+                                signaturePart.ContentTransferEncoding = ContentEncoding.Base64;
+                                signaturePart.FileName = Path.GetFileName("smime.p7s");
+
+                                // Construct multipart MIME message
+                                var multipart = new Multipart("signed");
+                                multipart.ContentType.Parameters["micalg"] = hashAlgorithm.ToString();
+                                multipart.ContentType.Parameters["protocol"] = "application/x-pkcs7-signature";
+                                multipart.Add(dataPart);
+                                multipart.Add(signaturePart);
+
+                                // Save signature to the file
+                                multipart.WriteTo(signatureFile);
+                            }
+                            finally
+                            {
+                                if (dataStream != null)
+                                {
+                                    dataStream.Dispose();
+                                    dataStream = null;
+                                }
+
+                                if (signatureStream != null)
+                                {
+                                    signatureStream.Dispose();
+                                    signatureStream = null;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            throw new NotSupportedException(string.Format("Output format \"{0}\" is not supported", outputFormat));
+                        }
                     }
                 }
             }
@@ -459,6 +536,7 @@ namespace Pkcs7SignatureGenerator
             Console.WriteLine(@"      --signature-file ""c:\temp\document.p7s""");
             Console.WriteLine(@"      --hash-alg ""SHA256""");
             Console.WriteLine(@"      --signature-scheme ""RSASSA_PKCS1_v1_5""");
+            Console.WriteLine(@"      --output-format ""CMS""");
             Console.WriteLine(@"      --certs-dir ""c:\temp\additional-certs""");
             Console.WriteLine();
             Console.WriteLine(@"  Verify signature:");
