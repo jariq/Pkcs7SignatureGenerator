@@ -280,8 +280,8 @@ namespace Pkcs7SignatureGenerator
             if (this._disposed)
                 throw new ObjectDisposedException(this.GetType().FullName);
 
-            string hashOid = GetHashOid(_hashAlgorihtm);
-            IDigest hashGenerator = GetHashGenerator(_hashAlgorihtm);
+            string hashOid = HashAlgorithmUtils.GetHashOid(_hashAlgorihtm);
+            IDigest hashGenerator = HashAlgorithmUtils.GetHashGenerator(_hashAlgorihtm);
 
             // Compute hash of input data
             byte[] dataHash = ComputeDigest(hashGenerator, data);
@@ -508,50 +508,6 @@ namespace Pkcs7SignatureGenerator
         }
 
         /// <summary>
-        /// Returns OID of specified hash algorithm
-        /// </summary>
-        /// <param name="hashAlgorithm">Hash algorithm</param>
-        /// <returns>OID of specified hash algorithm</returns>
-        private static string GetHashOid(HashAlgorithm hashAlgorithm)
-        {
-            switch (hashAlgorithm)
-            {
-                case HashAlgorithm.SHA1:
-                    return OID.SHA1;
-                case HashAlgorithm.SHA256:
-                    return OID.SHA256;
-                case HashAlgorithm.SHA384:
-                    return OID.SHA384;
-                case HashAlgorithm.SHA512:
-                    return OID.SHA512;
-                default:
-                    throw new NotSupportedException("Unsupported hash algorithm");
-            }
-        }
-
-        /// <summary>
-        /// Returns implementation of specified hash algorithm
-        /// </summary>
-        /// <param name="hashAlgorithm">Hash algorithm</param>
-        /// <returns>Implementation of specified hash algorithm</returns>
-        private static IDigest GetHashGenerator(HashAlgorithm hashAlgorithm)
-        {
-            switch (hashAlgorithm)
-            {
-                case HashAlgorithm.SHA1:
-                    return new Sha1Digest();
-                case HashAlgorithm.SHA256:
-                    return new Sha256Digest();
-                case HashAlgorithm.SHA384:
-                    return new Sha384Digest();
-                case HashAlgorithm.SHA512:
-                    return new Sha512Digest();
-                default:
-                    throw new NotSupportedException("Unsupported hash algorithm");
-            }
-        }
-
-        /// <summary>
         /// Creates parameters for CKM_RSA_PKCS_PSS mechanism
         /// </summary>
         /// <param name="hashAlgorithm">Hash algorithm</param>
@@ -564,25 +520,25 @@ namespace Pkcs7SignatureGenerator
                     return new CkRsaPkcsPssParams(
                         hashAlg: (ulong)CKM.CKM_SHA_1,
                         mgf: (ulong)CKG.CKG_MGF1_SHA1,
-                        len: (ulong)GetHashGenerator(hashAlgorithm).GetDigestSize()
+                        len: (ulong)HashAlgorithmUtils.GetHashGenerator(hashAlgorithm).GetDigestSize()
                     );
                 case HashAlgorithm.SHA256:
                     return new CkRsaPkcsPssParams(
                         hashAlg: (ulong)CKM.CKM_SHA256,
                         mgf: (ulong)CKG.CKG_MGF1_SHA256,
-                        len: (ulong)GetHashGenerator(hashAlgorithm).GetDigestSize()
+                        len: (ulong)HashAlgorithmUtils.GetHashGenerator(hashAlgorithm).GetDigestSize()
                     );
                 case HashAlgorithm.SHA384:
                     return new CkRsaPkcsPssParams(
                         hashAlg: (ulong)CKM.CKM_SHA384,
                         mgf: (ulong)CKG.CKG_MGF1_SHA384,
-                        len: (ulong)GetHashGenerator(hashAlgorithm).GetDigestSize()
+                        len: (ulong)HashAlgorithmUtils.GetHashGenerator(hashAlgorithm).GetDigestSize()
                     );
                 case HashAlgorithm.SHA512:
                     return new CkRsaPkcsPssParams(
                         hashAlg: (ulong)CKM.CKM_SHA512,
                         mgf: (ulong)CKG.CKG_MGF1_SHA512,
-                        len: (ulong)GetHashGenerator(hashAlgorithm).GetDigestSize()
+                        len: (ulong)HashAlgorithmUtils.GetHashGenerator(hashAlgorithm).GetDigestSize()
                     );
                 default:
                     throw new NotSupportedException("Unsupported hash algorithm");

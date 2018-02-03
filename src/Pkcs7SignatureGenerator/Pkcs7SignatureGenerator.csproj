@@ -53,6 +53,7 @@
     <Compile Include="Certificate.cs" />
     <Compile Include="CertUtils.cs" />
     <Compile Include="HashAlgorithm.cs" />
+    <Compile Include="HashAlgorithmUtils.cs" />
     <Compile Include="ObjectNotFoundException.cs" />
     <Compile Include="OID.cs" />
     <Compile Include="OutputFormat.cs" />
