@@ -35,13 +35,13 @@ namespace Pkcs7SignatureGenerator
             switch (hashAlgorithm)
             {
                 case HashAlgorithm.SHA1:
-                    return "sha-1";
+                    return "SHA1";
                 case HashAlgorithm.SHA256:
-                    return "sha-256";
+                    return "SHA2";
                 case HashAlgorithm.SHA384:
-                    return "sha-384";
+                    return "SHA2";
                 case HashAlgorithm.SHA512:
-                    return "sha-512";
+                    return "SHA2";
                 default:
                     throw new NotSupportedException("Unsupported hash algorithm");
             }
