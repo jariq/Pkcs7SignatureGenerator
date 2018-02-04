@@ -448,6 +448,7 @@ namespace Pkcs7SignatureGenerator
 
                                 // Construct multipart MIME message
                                 var multipart = new Multipart("signed");
+                                multipart.Boundary = Path.GetFileName(dataFile);
                                 multipart.ContentType.Parameters["micalg"] = HashAlgorithmUtils.GetHashMicalgName(hashAlgorithm);
                                 multipart.ContentType.Parameters["protocol"] = "application/x-pkcs7-signature";
                                 multipart.Add(dataPart);
