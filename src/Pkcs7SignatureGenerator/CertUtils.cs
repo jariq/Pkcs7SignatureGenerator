@@ -26,7 +26,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Org.BouncyCastle.Pkix;
 using Org.BouncyCastle.X509.Store;
@@ -167,7 +166,7 @@ namespace Pkcs7SignatureGenerator
             List<BCX509.X509Certificate> result = new List<BCX509.X509Certificate>();
 
             BCX509.X509Certificate signingCert = ToBouncyCastleObject(signingCertificate);
-            BCCollections.ISet trustAnchors = new BCCollections.HashSet();
+            HashSet<TrustAnchor> trustAnchors = new HashSet<TrustAnchor>();
             List<BCX509.X509Certificate> otherCerts = new List<BCX509.X509Certificate>();
 
             if (IsSelfSigned(signingCert))
@@ -197,7 +196,7 @@ namespace Pkcs7SignatureGenerator
                 targetConstraints.Certificate = signingCert;
 
                 PkixBuilderParameters certPathBuilderParameters = new PkixBuilderParameters(trustAnchors, targetConstraints);
-                certPathBuilderParameters.AddStore(X509StoreFactory.Create("Certificate/Collection", new X509CollectionStoreParameters(otherCerts)));
+                certPathBuilderParameters.AddStoreCert(BCCollections.CollectionUtilities.CreateStore(otherCerts));
                 certPathBuilderParameters.IsRevocationEnabled = false;
 
                 PkixCertPathBuilder certPathBuilder = new PkixCertPathBuilder();
