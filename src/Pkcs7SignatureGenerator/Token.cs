@@ -37,7 +37,7 @@ namespace Pkcs7SignatureGenerator
         /// <summary>
         /// PKCS#11 slot
         /// </summary>
-        internal Slot Slot = null;
+        internal ISlot Slot = null;
 
         /// <summary>
         /// Token manufacturer
@@ -111,7 +111,7 @@ namespace Pkcs7SignatureGenerator
         /// <param name="model">Token model</param>
         /// <param name="serialNumber">Token serial number</param>
         /// <param name="label">Token label</param>
-        internal Token(Slot slot, string manufacturerId, string model, string serialNumber, string label)
+        internal Token(ISlot slot, string manufacturerId, string model, string serialNumber, string label)
         {
             if (slot == null)
                 throw new ArgumentNullException("slot");

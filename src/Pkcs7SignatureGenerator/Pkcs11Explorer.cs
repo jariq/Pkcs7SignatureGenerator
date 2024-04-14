@@ -47,7 +47,7 @@ namespace Pkcs7SignatureGenerator
         /// <summary>
         /// High level PKCS#11 wrapper
         /// </summary>
-        private Pkcs11 _pkcs11 = null;
+        private IPkcs11Library _pkcs11Library = null;
 
         /// <summary>
         /// Initializes a new instance of the Pkcs11Explorer class
@@ -58,7 +58,8 @@ namespace Pkcs7SignatureGenerator
             if (string.IsNullOrEmpty(libraryPath))
                 throw new ArgumentNullException("libraryPath");
 
-            _pkcs11 = new Pkcs11(libraryPath, AppType.MultiThreaded);
+            Pkcs11InteropFactories factories = new Pkcs11InteropFactories();
+            _pkcs11Library = factories.Pkcs11LibraryFactory.LoadPkcs11Library(factories, libraryPath, AppType.MultiThreaded);
         }
 
         /// <summary>
@@ -72,10 +73,10 @@ namespace Pkcs7SignatureGenerator
 
             List<Token> tokens = new List<Token>();
 
-            List<Slot> slots = _pkcs11.GetSlotList(SlotsType.WithTokenPresent);
-            foreach (Slot slot in slots)
+            List<ISlot> slots = _pkcs11Library.GetSlotList(SlotsType.WithTokenPresent);
+            foreach (ISlot slot in slots)
             {
-                TokenInfo tokenInfo = null;
+                ITokenInfo tokenInfo = null;
 
                 try
                 {
@@ -115,15 +116,15 @@ namespace Pkcs7SignatureGenerator
             privateKeys = new List<PrivateKey>();
             certificates = new List<Certificate>();
 
-            using (Session session = token.Slot.OpenSession(SessionType.ReadOnly))
+            using (ISession session = token.Slot.OpenSession(SessionType.ReadOnly))
             {
                 if (login == true)
                     session.Login(CKU.CKU_USER, pin);
 
                 // Define search template for private keys
-                List<ObjectAttribute> keySearchTemplate = new List<ObjectAttribute>();
-                keySearchTemplate.Add(new ObjectAttribute(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY));
-                keySearchTemplate.Add(new ObjectAttribute(CKA.CKA_TOKEN, true));
+                List<IObjectAttribute> keySearchTemplate = new List<IObjectAttribute>();
+                keySearchTemplate.Add(session.Factories.ObjectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_PRIVATE_KEY));
+                keySearchTemplate.Add(session.Factories.ObjectAttributeFactory.Create(CKA.CKA_TOKEN, true));
 
                 // Define private key attributes that should be read
                 List<CKA> keyAttributes = new List<CKA>();
@@ -137,10 +138,10 @@ namespace Pkcs7SignatureGenerator
                 rsaAttributes.Add(CKA.CKA_PUBLIC_EXPONENT);
 
                 // Find private keys
-                List<ObjectHandle> foundKeyObjects = session.FindAllObjects(keySearchTemplate);
-                foreach (ObjectHandle foundKeyObject in foundKeyObjects)
+                List<IObjectHandle> foundKeyObjects = session.FindAllObjects(keySearchTemplate);
+                foreach (IObjectHandle foundKeyObject in foundKeyObjects)
                 {
-                    List<ObjectAttribute> keyObjectAttributes = session.GetAttributeValue(foundKeyObject, keyAttributes);
+                    List<IObjectAttribute> keyObjectAttributes = session.GetAttributeValue(foundKeyObject, keyAttributes);
 
                     string ckaId = ConvertUtils.BytesToHexString(keyObjectAttributes[0].GetValueAsByteArray());
                     string ckaLabel = keyObjectAttributes[1].GetValueAsString();
@@ -148,7 +149,7 @@ namespace Pkcs7SignatureGenerator
 
                     if (keyObjectAttributes[2].GetValueAsUlong() == Convert.ToUInt64(CKK.CKK_RSA))
                     {
-                        List<ObjectAttribute> rsaObjectAttributes = session.GetAttributeValue(foundKeyObject, rsaAttributes);
+                        List<IObjectAttribute> rsaObjectAttributes = session.GetAttributeValue(foundKeyObject, rsaAttributes);
 
                         BigInteger modulus = new BigInteger(1, rsaObjectAttributes[0].GetValueAsByteArray());
                         BigInteger exponent = new BigInteger(1, rsaObjectAttributes[1].GetValueAsByteArray());
@@ -159,10 +160,10 @@ namespace Pkcs7SignatureGenerator
                 }
 
                 // Define search template for X.509 certificates
-                List<ObjectAttribute> certSearchTemplate = new List<ObjectAttribute>();
-                certSearchTemplate.Add(new ObjectAttribute(CKA.CKA_CLASS, CKO.CKO_CERTIFICATE));
-                certSearchTemplate.Add(new ObjectAttribute(CKA.CKA_TOKEN, true));
-                certSearchTemplate.Add(new ObjectAttribute(CKA.CKA_CERTIFICATE_TYPE, CKC.CKC_X_509));
+                List<IObjectAttribute> certSearchTemplate = new List<IObjectAttribute>();
+                certSearchTemplate.Add(session.Factories.ObjectAttributeFactory.Create(CKA.CKA_CLASS, CKO.CKO_CERTIFICATE));
+                certSearchTemplate.Add(session.Factories.ObjectAttributeFactory.Create(CKA.CKA_TOKEN, true));
+                certSearchTemplate.Add(session.Factories.ObjectAttributeFactory.Create(CKA.CKA_CERTIFICATE_TYPE, CKC.CKC_X_509));
 
                 // Define certificate attributes that should be read
                 List<CKA> certAttributes = new List<CKA>();
@@ -171,10 +172,10 @@ namespace Pkcs7SignatureGenerator
                 certAttributes.Add(CKA.CKA_VALUE);
 
                 // Find X.509 certificates
-                List<ObjectHandle> foundCertObjects = session.FindAllObjects(certSearchTemplate);
-                foreach (ObjectHandle foundCertObject in foundCertObjects)
+                List<IObjectHandle> foundCertObjects = session.FindAllObjects(certSearchTemplate);
+                foreach (IObjectHandle foundCertObject in foundCertObjects)
                 {
-                    List<ObjectAttribute> objectAttributes = session.GetAttributeValue(foundCertObject, certAttributes);
+                    List<IObjectAttribute> objectAttributes = session.GetAttributeValue(foundCertObject, certAttributes);
 
                     string ckaId = ConvertUtils.BytesToHexString(objectAttributes[0].GetValueAsByteArray());
                     string ckaLabel = objectAttributes[1].GetValueAsString();
@@ -210,10 +211,10 @@ namespace Pkcs7SignatureGenerator
                 // Dispose managed objects
                 if (disposing)
                 {
-                    if (_pkcs11 != null)
+                    if (_pkcs11Library != null)
                     {
-                        _pkcs11.Dispose();
-                        _pkcs11 = null;
+                        _pkcs11Library.Dispose();
+                        _pkcs11Library = null;
                     }
                 }
 
