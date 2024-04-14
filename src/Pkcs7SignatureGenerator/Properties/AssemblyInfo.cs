@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Pkcs7SignatureGenerator")]
-[assembly: AssemblyDescription("Example application for PKCS#7 signature creation with Pkcs11Interop and BouncyCastle libraries")]
+[assembly: AssemblyDescription("Sample application for PKCS#7/CMS/SMIME signature creation with Pkcs11Interop, BouncyCastle and MimeKit libraries")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("JWC s.r.o.")]
-[assembly: AssemblyProduct("Pkcs7SignatureGenerator (AGPL)")]
-[assembly: AssemblyCopyright("Copyright © 2014 JWC s.r.o. All Rights Reserved.")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("Pkcs7SignatureGenerator")]
+[assembly: AssemblyCopyright("Copyright © 2014-2024 Jaroslav Imrich")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
