@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Pkcs7SignatureGenerator")]
-[assembly: AssemblyCopyright("Copyright © 2014-2024 Jaroslav Imrich")]
+[assembly: AssemblyCopyright("Copyright © 2014-2025 Jaroslav Imrich")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
