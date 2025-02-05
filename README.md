@@ -1,6 +1,6 @@
 # Pkcs7SignatureGenerator
 
-Sample application for PKCS#7/CMS/SMIME signature creation with [Pkcs11Interop](https://pkcs11interop.net), [BouncyCastle](https://bouncycastle.org/csharp/) and [MimeKit](https://mimekit.net) libraries.
+Sample application for PKCS#7/CMS/SMIME signature creation with [Pkcs11Interop](https://github.com/Pkcs11Interop/Pkcs11Interop), [BouncyCastle](https://www.bouncycastle.org/download/bouncy-castle-c/) and [MimeKit](https://mimekit.net/) libraries.
 
 ## Basic usage
 
